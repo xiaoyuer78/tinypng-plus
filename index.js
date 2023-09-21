@@ -92,9 +92,6 @@ if (pathIndex !== -1 && pathIndex + 1 < args.length) {
   })
 }
 
-console.log('rootPath', rootPath)
-console.log('rootDirPath', rootDirPath)
-
 let isRecursive = false // 是否递归所有目录处理图片
 let isForce = false // 是否覆盖原图
 args.forEach((arg) => {
@@ -103,9 +100,6 @@ args.forEach((arg) => {
     if (arg.includes('f')) isForce = true
   }
 })
-
-console.log('isRecursive', isRecursive)
-console.log('isForce', isForce)
 
 const exts = ['.jpg', '.png']
 const max = 5200000 // 5MB == 5242848.754299136
@@ -222,7 +216,7 @@ function fileUpdate(imgPath, obj) {
       fs.writeFile(imgPath, body, 'binary', (err) => {
         if (err) return console.error(err)
         console.log(
-          `[${imgPath}] \n 压缩成功，原始大小-${obj.input.size}，压缩大小-${obj.output.size}，优化比例-${obj.output.ratio}`
+          `[${imgPath}] \n 压缩成功，原始大小-${obj.input.size}，压缩大小-${obj.output.size}，优化比例-${obj.output.ratio} \n `
         )
       })
     })
