@@ -10,6 +10,8 @@ const fs = require('fs')
 const path = require('path')
 const https = require('https')
 const { URL } = require('url')
+const chalk = require('chalk')
+chalk.level = 2
 
 // 获取命令行参数
 const args = process.argv
@@ -62,7 +64,9 @@ if (args.includes('--help') || args.includes('-h')) {
 }
 
 if (args.includes('--version') || args.includes('-v')) {
-  const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'))
+  const packageJson = JSON.parse(
+    fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')
+  )
   const version = packageJson.version
   console.log(version)
   return
@@ -101,7 +105,7 @@ args.forEach((arg) => {
   }
 })
 
-const exts = ['.jpg', '.png']
+const exts = ['.png', '.jpg', '.jpeg', '.webp']
 const max = 5200000 // 5MB == 5242848.754299136
 
 const options = {
@@ -127,25 +131,27 @@ compressionWithPath(rootPath)
  * @param {*} withDir // 如果路径是目录，是否处理目录内的内容。默认为true
  */
 function compressionWithPath(filePath, withDir = true) {
-  fs.stat(filePath, (err, stats) => {
-    if (err) return console.error(err)
+  return new Promise((resolve, reject) => {
+    fs.stat(filePath, (err, stats) => {
+      if (err) return console.error(err)
 
-    if (withDir && stats.isDirectory()) {
-      // 获取文件列表
-      fs.readdir(filePath, (err, files) => {
-        if (err) console.error(err)
-        files.forEach((file) => {
-          // isRecursive为true，则继续压缩当前目录下的内容（递归压缩）
-          compressionWithPath(path.join(filePath, file), isRecursive)
+      if (withDir && stats.isDirectory()) {
+        // 获取文件列表
+        fs.readdir(filePath, (err, files) => {
+          if (err) console.error(err)
+          files.forEach((file) => {
+            // isRecursive为true，则继续压缩当前目录下的内容（递归压缩）
+            compressionWithPath(path.join(filePath, file), isRecursive)
+          })
         })
-      })
-    } else if (stats.isFile()) {
-      // 必须是文件，小于5MB
-      if (stats.size > max) {
-        return console.warn(`文件${imgPath}超过5M，无法压缩`)
+      } else if (stats.isFile()) {
+        // 必须是文件，小于5MB
+        if (stats.size > max) {
+          return console.warn(chalk.red(`文件[${imgPath}]超过5M，无法压缩`))
+        }
+        return uploadCompressionImg(filePath)
       }
-      uploadCompressionImg(filePath)
-    }
+    })
   })
 }
 
@@ -161,7 +167,11 @@ function getRandomIP() {
 // {"input": { "size": 887, "type": "image/png" },"output": { "size": 785, "type": "image/png", "width": 81, "height": 81, "ratio": 0.885, "url": "https://tinypng.com/web/output/7aztz90nq5p9545zch8gjzqg5ubdatd6" }}
 function uploadCompressionImg(imgPath) {
   if (!exts.includes(path.extname(imgPath))) {
-    return console.warn(`${imgPath}：只支持压缩png、jpg格式图片`)
+    // 支持的图片格式
+    let supportFormat = exts.map((ext) => ext.slice(1)).join('、')
+    return console.warn(
+      chalk.red(`${imgPath}：只支持压缩${supportFormat}格式的图片`)
+    )
   }
 
   // 通过 X-Forwarded-For 头部伪造客户端IP
@@ -170,7 +180,7 @@ function uploadCompressionImg(imgPath) {
     res.on('data', (buf) => {
       let obj = JSON.parse(buf.toString())
       if (obj.error) {
-        console.log(`[${imgPath}]：压缩失败！报错：${obj.message}`)
+        console.log(chalk.red(`[${imgPath}]\n压缩失败！报错：${obj.message}\n`))
       } else {
         fileUpdate(imgPath, obj)
       }
@@ -182,6 +192,18 @@ function uploadCompressionImg(imgPath) {
     console.error(e)
   })
   req.end()
+}
+
+// 文件大小单位由K转换为KB或MB（保证数值大于1）
+function formatSize(size) {
+  if (size < 1024) return size + 'K'
+  if (size < 1024 * 1024) return (size / 1024).toFixed(2) + 'KB'
+  return (size / 1024 / 1024).toFixed(2) + 'MB'
+}
+
+// 把小数转成百分比
+function formatPercent(percent) {
+  return ((1 - percent) * 100).toFixed(2) + '%'
 }
 
 // 该方法被循环调用,请求图片数据
@@ -216,7 +238,13 @@ function fileUpdate(imgPath, obj) {
       fs.writeFile(imgPath, body, 'binary', (err) => {
         if (err) return console.error(err)
         console.log(
-          `[${imgPath}] \n 压缩成功，原始大小-${obj.input.size}，压缩大小-${obj.output.size}，优化比例-${obj.output.ratio} \n `
+          chalk.green(
+            `[${imgPath}]\n压缩成功，原始大小：${formatSize(
+              obj.input.size
+            )}，压缩后大小：${formatSize(
+              obj.output.size
+            )}，优化比例：-${formatPercent(obj.output.ratio)}\n `
+          )
         )
       })
     })
