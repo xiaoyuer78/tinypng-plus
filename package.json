@@ -22,6 +22,7 @@
   },
   "homepage": "https://github.com/xiaoyuer78/tinypng-plus#readme",
   "dependencies": {
-    "chalk": "^4.1.2"
+    "chalk": "^4.1.2",
+    "tinypng-plus": "file:"
   }
 }
