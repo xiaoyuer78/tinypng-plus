@@ -23,12 +23,11 @@ function checkFileFormatAndSize(filePath) {
 }
 
 // 计算指定目录下文件数量
-function countFiles(dirPath) {
+function countFiles(dirPath, isRecursive = false) {
   const files = fs.readdirSync(dirPath)
-  // 总文件数量
   let count = 0
-  // 有效文件数量
   let validCount = 0
+
   files.forEach((file) => {
     const filePath = path.join(dirPath, file)
     const stats = fs.statSync(filePath)
@@ -37,8 +36,11 @@ function countFiles(dirPath) {
       if (checkFileFormatAndSize(filePath).result) {
         validCount++
       }
-    } else if (stats.isDirectory()) {
-      countFiles(filePath)
+    } else if (stats.isDirectory() && isRecursive) {
+      // 只在 isRecursive 为 true 时递归统计子目录
+      const subDirCounts = countFiles(filePath, isRecursive)
+      count += subDirCounts.count
+      validCount += subDirCounts.validCount
     }
   })
   return { count, validCount }

@@ -69,6 +69,8 @@ const pathIndex = args.indexOf('--path')
 
 let rootPath = process.cwd() // 默认要处理的路径（默认是当前目录，也支持具体文件地址）
 let rootDirPath = rootPath // 要处理文件的根目录（如rootPath是目录，则同rootPath; 如rootPath是文件地址，则为该文件所在目录）
+// 文件输出目录默认为当前目录同级的 原目录名+output 目录
+let outputDir = ''
 
 if (pathIndex !== -1 && pathIndex + 1 < args.length) {
   // 指定路径
@@ -125,11 +127,8 @@ let successCount = 0
 
 // 失败的文件列表
 let failList = []
-
-const { count: fileCount, validCount } = countFiles(rootPath)
-
-console.log('fileCount', fileCount, 'validCount', validCount)
-return
+const { count: fileCount, validCount } = countFiles(rootPath, isRecursive)
+// console.log('fileCount', fileCount, 'validCount', validCount)
 
 // 默认压缩指定路径内容
 compressionWithPath(rootPath)
@@ -253,12 +252,12 @@ function uploadCompressionImg(imgPath) {
         } else {
           // 如果剩余文件数量小于3，则异步执行，阻塞流程，保证压缩成功且下载成功再返回最终结果。
           // 否则同步执行，不需要阻塞。保证压缩成功即可，保证效率。
-          console.log(
-            '异步：',
-            validCount - processedCount < 3,
-            validCount,
-            processedCount
-          )
+          // console.log(
+          //   '异步：',
+          //   validCount - processedCount < 3,
+          //   validCount,
+          //   processedCount
+          // )
 
           if (validCount - processedCount < 3) {
             downloadUpdateFile(imgPath, obj).then((result) => {
@@ -292,8 +291,13 @@ function downloadUpdateFile(imgPath, obj) {
   return new Promise((resolve) => {
     // 如果不覆盖原文件，则新建文件夹
     if (!isForce) {
-      // 文件输出目录默认为当前目录下的output目录
-      let outputDir = path.join(rootDirPath, 'output')
+      // 获取原目录名并添加output后缀
+      const originalDirName = path.basename(rootDirPath)
+      // 文件输出目录默认为当前目录同级的 原目录名+output 目录
+      outputDir = path.join(
+        path.dirname(rootDirPath),
+        originalDirName + '_output'
+      )
       const outputPathIndex = args.indexOf('--output')
       // 如果有指定输出目录，则以指定目录为准
       if (outputPathIndex !== -1 && outputPathIndex + 1 < args.length) {
@@ -361,6 +365,11 @@ const resultMessage = function () {
       '压缩失败数：' + chalk.red(validCount - successCount) + '\n'
     )
   )
+  if (isForce) {
+    console.log(chalk.yellow('已开启【覆盖原图】模式，已压缩并覆盖原图\n'))
+  } else {
+    console.log(chalk.yellow(`已压缩文件输出目录为：${outputDir}\n`))
+  }
   console.log(
     // chalk.green(
     `【已压缩文件信息】\n原始总大小：${formatSize(
