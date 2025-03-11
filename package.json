@@ -1,6 +1,6 @@
 {
   "name": "tinypng-plus",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "tinypng-plus 图片压缩命令行工具。可选择是否递归处理和覆盖原文件；支持压缩指定文件或目录，也可指定输出目录。",
   "main": "index.js",
   "bin": {

@@ -12,7 +12,7 @@ const https = require('https')
 const { URL } = require('url')
 const readline = require('readline')
 const chalk = require('chalk')
-const helpText = require('./utils/constants')
+const { helpText } = require('./utils/constants')
 const {
   checkFileFormatAndSize,
   countFiles,
@@ -76,7 +76,9 @@ if (pathIndex !== -1 && pathIndex + 1 < args.length) {
   // 指定路径
   rootPath = args[pathIndex + 1]
   if (!fs.existsSync(rootPath)) {
-    throw new Error(rootPath + ' 目录不存在')
+    // throw new Error(rootPath + ' 目录不存在')
+    console.log(chalk.red(rootPath + ' 目录或路径不存在'))
+    return
   }
 
   // 如果rootPath是文件，则重新计算rootDirPath
@@ -136,7 +138,7 @@ compressionWithPath(rootPath)
     // 延时1秒，等待图片下载完成
     // delay(2000)
     // 向用户展示结果
-    resultMessage()
+    // resultMessage()
     if (failList.length > 0) {
       // 如果压缩失败的文件数量大于0，则给出重试压缩提示，并执行重新压缩
       tipCompressionWithFileArray(failList)
@@ -244,33 +246,30 @@ function uploadCompressionImg(imgPath) {
     options.headers['X-Forwarded-For'] = getRandomIP()
     var req = https.request(options, function (res) {
       res.on('data', (buf) => {
-        let obj = JSON.parse(buf.toString())
-        if (obj.error) {
-          const msg = `压缩失败！失败原因：${obj.message}\n`
-          // console.warn(chalk.red(msg))
-          return resolve({ imgPath, error: msg })
-        } else {
-          // 如果剩余文件数量小于3，则异步执行，阻塞流程，保证压缩成功且下载成功再返回最终结果。
-          // 否则同步执行，不需要阻塞。保证压缩成功即可，保证效率。
-          // console.log(
-          //   '异步：',
-          //   validCount - processedCount < 3,
-          //   validCount,
-          //   processedCount
-          // )
-
-          if (validCount - processedCount < 3) {
-            downloadUpdateFile(imgPath, obj).then((result) => {
-              // 文件下载成功后再返回结果
-              resolve(result)
-            })
+        try {
+          let obj = JSON.parse(buf.toString())
+          if (obj.error) {
+            const msg = `压缩失败！失败原因：${obj.message}\n`
+            // console.warn(chalk.red(msg))
+            return resolve({ imgPath, error: msg })
           } else {
-            downloadUpdateFile(imgPath, obj).then((result) => {
-              chalkLog(result)
-            })
-            // 同步执行，不需要阻塞
-            resolve()
+            // 如果剩余文件数量小于3，则异步执行，阻塞流程，保证压缩成功且下载成功再返回最终结果。
+            // 否则同步执行，不需要阻塞。保证压缩成功即可，保证效率。
+            if (validCount - processedCount < 3) {
+              downloadUpdateFile(imgPath, obj).then((result) => {
+                // 文件下载成功后再返回结果
+                resolve(result)
+              })
+            } else {
+              downloadUpdateFile(imgPath, obj).then((result) => {
+                chalkLog(result)
+              })
+              // 同步执行，不需要阻塞
+              resolve()
+            }
           }
+        } catch (error) {
+          console.error(chalk.red(error))
         }
       })
     })
@@ -365,6 +364,7 @@ const resultMessage = function () {
       '压缩失败数：' + chalk.red(validCount - successCount) + '\n'
     )
   )
+  if (validCount === 0) return
   if (isForce) {
     console.log(chalk.yellow('已开启【覆盖原图】模式，已压缩并覆盖原图\n'))
   } else {
@@ -378,7 +378,11 @@ const resultMessage = function () {
       compressedTotalSize
     )};\n节省总大小：${formatSize(
       originalTotalSize - compressedTotalSize
-    )}; 压缩率：${formatPercent(originalTotalSize / compressedTotalSize)}`
+    )}; 压缩率：${
+      compressedTotalSize === 0
+        ? 0
+        : formatPercent(originalTotalSize / compressedTotalSize)
+    }`
     // )
   )
 }

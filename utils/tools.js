@@ -23,13 +23,21 @@ function checkFileFormatAndSize(filePath) {
 }
 
 // 计算指定目录下文件数量
-function countFiles(dirPath, isRecursive = false) {
-  const files = fs.readdirSync(dirPath)
+function countFiles(inputPath, isRecursive = false) {
   let count = 0
   let validCount = 0
 
+  // 如果是文件，则直接返回
+  if (fs.statSync(inputPath).isFile()) {
+    count = 1
+    validCount = checkFileFormatAndSize(inputPath).result ? 1 : 0
+    return { count, validCount }
+  }
+
+  // 如果是目录，则递归统计子目录
+  const files = fs.readdirSync(inputPath)
   files.forEach((file) => {
-    const filePath = path.join(dirPath, file)
+    const filePath = path.join(inputPath, file)
     const stats = fs.statSync(filePath)
     if (stats.isFile()) {
       count++
