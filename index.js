@@ -381,7 +381,7 @@ const resultMessage = function () {
     )}; 压缩率：${
       compressedTotalSize === 0
         ? 0
-        : formatPercent(originalTotalSize / compressedTotalSize)
+        : formatPercent(compressedTotalSize / originalTotalSize)
     }`
     // )
   )
